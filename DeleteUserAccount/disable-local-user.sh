@@ -6,7 +6,7 @@ if [[ "${UID}" -ne 0 ]]; then
 fi
 
 usage() {
-    echo './disable-local-user.sh [OPTION]... [USER]'
+    echo './disable-local-user.sh [OPTION]... [USERS]'
     echo '  -d  Delete account instead of disabling them'
     echo '  -r  Removes the home directory associated with the account(s)'
     echo '  -a  Creates an archive of the home directory associated with the account(s) and stores the archive in the /archives directory'
@@ -24,30 +24,32 @@ done
 
 shift $(( OPTIND - 1 ))
 
-if [[ "$#" -ne 1 ]]; then
+if [[ "$#" -lt 1 ]]; then
     usage
     exit 1
 fi
 
-USER=$1
-STATUS=$(sudo chage -E -0 ${USER})
-if [[ ${STATUS} -ne 0 ]]; then
-    echo "Failed to disable account for ${USER}"
-    exit 1
-fi
+for USER in "$@"; do
 
-if [[ ${DELETE_USER} = 'true' ]]; then
-    sudo userdel ${USER}
-fi
+    STATUS=$(sudo chage -E -0 ${USER})
+    if [[ ${STATUS} -ne 0 ]]; then
+        echo "Failed to disable account for ${USER}"
+        exit 1
+    fi
 
-if [[ ${DELETE_USER_DIR} = 'true' ]]; then
-    sudo userdel -r ${USER}
-fi
+    if [[ ${DELETE_USER} = 'true' ]]; then
+        sudo userdel ${USER}
+    fi
 
-if [[ "${ARCHIVE}" = 'true' ]]; then
-    # Extract the home directory of the user
-    USER_HOME=$(cat /etc/passwd | grep "${USER}" | cut -d ':' -f 6)
-    tar -cvzf "${USER_HOME}.tar.gz" "${USER_HOME}"
-fi
+    if [[ ${DELETE_USER_DIR} = 'true' ]]; then
+        sudo userdel -r ${USER}
+    fi
+
+    if [[ "${ARCHIVE}" = 'true' ]]; then
+        # Extract the home directory of the user
+        USER_HOME=$(cat /etc/passwd | grep "${USER}" | cut -d ':' -f 6)
+        tar -cvzf "${USER_HOME}.tar.gz" "${USER_HOME}"
+    fi
+done
 
 exit 0
